@@ -15,7 +15,7 @@ def login(data:Login,db=Depends(session)):
     return {'token':issue(row),'username':row.username,'role':row.role}
 @router.get('/workspace')
 def workspace(db=Depends(session),user=Depends(current)):
-    return {m.__tablename__:[dump(r) for r in db.scalars(select(m).order_by(m.id))] for m in [Boat,Cruise,NavigationClosure,Transect,Echo,SchoolAnalysis,SchoolReview,Net,NetCalibration,BioSample,MissingInterval,Resurvey,SurveyRelease]}
+    return {m.__tablename__:[dump(r) for r in db.scalars(select(m).order_by(m.id))] for m in [Boat,Cruise,NavigationClosure,Transect,Echo,SchoolAnalysis,SchoolReview,Net,NetCalibration,BioSample,MissingInterval,Resurvey,ResurveyPlan,SurveyRelease]}
 @router.post('/cruises')
 def create(data:CruiseInput,db=Depends(session),user=Depends(editor)):return nav.create(db,data,user)
 @router.patch('/cruises/{id}/schedule')
@@ -48,6 +48,12 @@ def plan(data:ResurveyInput,db=Depends(session),user=Depends(supervisor)):return
 def complete(id:int,data:CompletionInput,db=Depends(session),user=Depends(supervisor)):return resurvey.complete(db,id,data,user)
 @router.post('/resurveys/{id}/cancel')
 def cancel(id:int,db=Depends(session),user=Depends(supervisor)):return resurvey.cancel(db,id,user)
+@router.post('/cruises/{id}/resurvey-budget')
+def budget(id:int,data:BudgetInput,db=Depends(session),user=Depends(supervisor)):return resurvey.set_budget(db,id,data,user)
+@router.post('/resurvey-plans/suggest')
+def suggest(data:SuggestInput,db=Depends(session),user=Depends(supervisor)):return resurvey.suggest(db,data,user)
+@router.post('/resurvey-plans/{id}/confirm')
+def confirm_plan(id:int,db=Depends(session),user=Depends(supervisor)):return resurvey.confirm(db,id,user)
 @router.post('/releases')
 def freeze(data:ReleaseInput,db=Depends(session),user=Depends(supervisor)):return release.freeze(db,data,user)
 @router.get('/releases/{id}')

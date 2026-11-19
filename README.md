@@ -10,7 +10,7 @@
 2. 声学航段与探头：地理端点、米制长度、38/120/200kHz探头、增益；回波点含沿程距离、经纬度、水深和强度，范围与偏航100米约束。
 3. 群落与噪点：worker实际DBSCAN，复核针对当前回波版本与最新识别ID；有噪点必须解释。同版本重跑识别后，旧复核不会继续放行。
 4. 网具与生物样：标称网目、实测尺度、证书和有效期；误差≤10%合格，最新校验须覆盖上海时区完整返航日期。样本引用已复核分析和实际校验记录，不可关联噪点。
-5. 缺测补航：原航段沿程区间不得重叠，主管按区间自动推导补航地理端点；补航回波、噪点复核和生物样齐全后才能接续。空补航可撤销重排。
+5. 缺测补航：原航段沿程区间不得重叠，主管按区间自动推导补航地理端点；补航回波、噪点复核和生物样齐全后才能接续。空补航可撤销重排。返航前可补里程额度有限：按缺口两侧各150米内已复核群落的沿程密度估算漏测风险，在剩余里程内自动挑出总风险最高的一组缺口并给出取舍依据；手排与自动排扣同一份额度，确认重试不重复扣里程；撤销未采集补航退还里程，已采到回波的仍占额度；确认前群落复核或余量变化则建议作废，确认后整组才算排定。
 6. 图层封存：缺测全部覆盖后结束现场；逐航段最新分析、噪点复核和对应样本齐全后冻结。JSON快照包含回波、聚类、复核、样本、网具与校验，附原始canonical_json及其UTF-8字节SHA256；航次冻结后拒绝业务变更。
 
 ## 启动和账户
@@ -35,13 +35,14 @@ JWT有效8小时，角色按服务端当前账户核验。演示凭据仅用于�
 ## 一天的操作剧本
 
 1. 08:30 打开CY031，潮研一号、E1/E2航段，原11:00–13:00航窗与11月18日12:00–14:00潮汐禁航重叠，开航拒绝。
-2. 09:00 改为14:15–17:00，主管核准；查看E1已登记300–600米探头断续缺测。
+2. 09:00 改为14:15–17:00，主管核准；查看E1已登记300–600米、E2已登记700–1000米探头断续缺测。
 3. 14:20 在“声学航段”选择E1，导入标注为合成来源的80点探头数据；E2同样导入。实际现场可提交JSON回波数组。
 4. 14:40 “群落复核”按eps1.2/min_samples4排队，刷新查看真实DBSCAN结果与参数敏感性，主管解释孤立回波的底质干扰并签署。
 5. 15:00 N31初校11.6mm相对10mm超差，生物样关联被拒绝；主管复校10.2mm、证书`N31-复校-20261118`、有效期2026-12-31，调查员关联群落0的12尾模拟鲻鱼、平均125mm。
-6. 15:20 主管为300米缺测生成E1-S1补航，尚无数据时确认接续被拒绝；到航段页导入补航回波，复核群落并关联生物样后，再确认覆盖。
-7. 16:30 主航段和补航齐全后主管结束现场调查。若重跑最新识别，需新复核与新样本关联，旧复核不能继续用。
-8. 17:00 交给“潮汐渔研站资源调查组”，冻结图层，下载`CY031-survey-layer.json`，对导出字段canonical_json原文的UTF-8字节计算SHA256，与sha256比较，并检查json.loads(canonical_json)等于snapshot后收件。不要对浏览器重新序列化的snapshot计算原始校验和。此后该航次业务记录只读。
+6. 15:20 主管在“缺测补航”查看里程额度（500米）并生成自动建议：E1、E2各300米缺口不能同时编入，页面按缺口两侧已复核群落给出风险估算与取舍依据，确认整组排定风险更高的一组。确认前若重新复核群落或调整额度，原建议作废需重新生成；确认重试不会重复扣里程。
+7. 15:40 主管将额度调至800米后重新生成建议并确认第二组（也可手工规划单个缺口，同样扣这份额度）。补航尚无数据时确认接续被拒绝；到航段页导入补航回波，复核群落并关联生物样后，再确认覆盖。撤销未采集的补航退还里程，已采到回波的补航不能撤销、仍占额度。
+8. 16:30 主航段和补航齐全后主管结束现场调查。若重跑最新识别，需新复核与新样本关联，旧复核不能继续用。
+9. 17:00 交给“潮汐渔研站资源调查组”，冻结图层，下载`CY031-survey-layer.json`，对导出字段canonical_json原文的UTF-8字节计算SHA256，与sha256比较，并检查json.loads(canonical_json)等于snapshot后收件。不要对浏览器重新序列化的snapshot计算原始校验和。此后该航次业务记录只读。
 
 种子时间固定在2026-11-18，全部航窗规则比较记录本身，不依赖当前系统时间，因此以后仍能演示。上海日期用于网具有效期，数据库时间存UTC。
 
@@ -57,16 +58,16 @@ worker从Redis队列领取任务，保存assignments、metrics、失败原因，
 
 | 路径 | 职责 |
 |---|---|
-| backend/src/models.py、schemas.py | Cruise/NavigationClosure、Transect/Echo、SchoolAnalysis/Review、Net/Calibration/BioSample、MissingInterval/Resurvey、SurveyRelease关系模型与输入契约 |
+| backend/src/models.py、schemas.py | Cruise/NavigationClosure、Transect/Echo、SchoolAnalysis/Review、Net/Calibration/BioSample、MissingInterval/Resurvey/ResurveyPlan、SurveyRelease关系模型与输入契约 |
 | navigation_service.py | 航窗、潮汐冲突、同船占用与开返航 |
 | transect_service.py、school_service.py、algorithm.py、worker.py | 航段长度、探头范围、版本化回波、实际聚类和噪点复核 |
-| biology_service.py、resurvey_service.py、release_service.py | 网具、生物样、补测地理接续与JSON冻结 |
+| biology_service.py、resurvey_service.py、release_service.py | 网具、生物样、补测里程额度与成组建议、地理接续与JSON冻结 |
 | common.py、auth.py、middlewares.py | 根锁、三角色JWT、动作审计、请求追踪和突发限流 |
 | frontend/src/pages | 六个原生ES modules业务页 |
 | frontend/src/components | voyage-context跨页航次/航段、survey-map真实航迹剖面、controls表单表格 |
 | frontend/src/api、stores、utils | 请求与会话、航次上下文、格式与保存反馈 |
 
-航船调度按Station→Boat→Cruise锁序；现场业务先锁Cruise根再锁Transect/子记录，补航并发规划在同一根锁下保证一缺测一在途。冻结与现场修改共用Cruise根，防止一边写回波一边交付快照。
+航船调度按Station→Boat→Cruise锁序；现场业务先锁Cruise根再锁Transect/子记录，补航并发规划在同一根锁下保证一缺测一在途。里程额度的占用（在途+已接续补航里程之和）也在同一Cruise根锁内计算，手排与自动确认串行占额，两人同时提交也不会超额；建议指纹覆盖额度、已占里程、待补缺口与相关航段最新已复核识别，确认前任一变化即作废。冻结与现场修改共用Cruise根，防止一边写回波一边交付快照。
 
 后端`constants.py` Role/CruiseState/AnalysisState在seed与模型引用，对应前端`constants/enums.js`roles/cruiseStates/analysisStates用于外壳与页面。航次planned/sailing/surveyed/frozen；分析queued/running/done/reviewed/failed。状态转换由服务端统一校验。
 
@@ -76,8 +77,8 @@ Python3.12、FastAPI、SQLAlchemy、PostgreSQL16、Redis7、NumPy、scikit-learn
 
 `.env.example`提供COMPOSE_PROJECT_NAME、FRONTEND_PORT、BACKEND_PORT、DB_PORT、COMPOSE_SUBNET、JWT_SECRET、SEED_DEMO；`.env`忽略提交。SEED_DEMO=true自动插入缺失自然键，不覆盖修改或重复增加记录。后端开发在Python3.12虚拟环境安装backend/requirements.txt，设置DATABASE_URL和REDIS_URL，在backend目录运行`uvicorn src.app:app --reload`。
 
-`docker compose logs -f backend worker`观察运行；`docker compose down -v --remove-orphans`停止并删除本项目演示数据。工作区`test-artifacts/gb-1037/`保存脚本、JSON证据与截图，与源码分离。
+`docker compose logs -f backend worker`观察运行；`docker compose down -v --remove-orphans`停止并删除本项目演示数据。工作区`test-artifacts/`保存验证脚本与证据（gb-1037、resurvey-mileage里程额度测试），与源码分离。
 
-已知范围：局部河口短航段近似投影适用于本题演示，非全球航海导航；只演示固定seed模拟探头与人工JSON现场输入，没有真实声呐设备协议、物种自动识别、外部生态标签或安全航行保证；补测为原航段直线区间接续；网具硬件证书由主管人工核对；数据库使用首次create_all，无历史迁移链。
+已知范围：局部河口短航段近似投影适用于本题演示，非全球航海导航；只演示固定seed模拟探头与人工JSON现场输入，没有真实声呐设备协议、物种自动识别、外部生态标签或安全航行保证；补测为原航段直线区间接续；漏测风险为两侧已复核群落沿程密度的外推当量，非实测漏测统计；网具硬件证书由主管人工核对；数据库使用首次create_all，无历史迁移链，模型结构变更后需`docker compose down -v`重建演示数据。
 
 MIT License，见LICENSE。

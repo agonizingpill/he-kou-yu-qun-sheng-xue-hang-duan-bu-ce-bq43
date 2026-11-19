@@ -14,6 +14,7 @@ class CruiseInput(Schedule):
     code:str=Field(min_length=3,max_length=40)
     boat_id:int
     purpose:str=Field(min_length=4,max_length=160)
+    resurvey_budget_m:float=Field(default=0,ge=0,le=20000)
 class ClosureInput(BaseModel):
     code:str=Field(min_length=3,max_length=40)
     start_at:datetime
@@ -67,6 +68,10 @@ class GapInput(BaseModel):
 class ResurveyInput(BaseModel):
     gap_id:int
     code:str=Field(min_length=2,max_length=40)
+class BudgetInput(BaseModel):
+    resurvey_budget_m:float=Field(ge=0,le=20000)
+class SuggestInput(BaseModel):
+    cruise_id:int
 class CompletionInput(BaseModel):
     evidence:str=Field(min_length=8,max_length=200)
 class ReleaseInput(BaseModel):

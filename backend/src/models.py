@@ -29,6 +29,7 @@ class Cruise(Base):
     arrive:Mapped[datetime]=mapped_column(DateTime(timezone=True))
     purpose:Mapped[str]=mapped_column(String(160))
     status:Mapped[str]=mapped_column(String(20),default=CruiseState.planned.value)
+    resurvey_budget_m:Mapped[float]=mapped_column(Float,default=0)
 class NavigationClosure(Base):
     __tablename__='navigation_closures'
     __table_args__=(CheckConstraint('end_at > start_at'),)
@@ -120,6 +121,20 @@ class Resurvey(Base):
     continuation_id:Mapped[int]=mapped_column(ForeignKey('transects.id'),unique=True)
     status:Mapped[str]=mapped_column(String(20),default='planned')
     evidence:Mapped[str]=mapped_column(String(200),default='')
+class ResurveyPlan(Base):
+    __tablename__='resurvey_plans'
+    id:Mapped[int]=mapped_column(primary_key=True)
+    cruise_id:Mapped[int]=mapped_column(ForeignKey('cruises.id'))
+    status:Mapped[str]=mapped_column(String(20),default='suggested')
+    fingerprint:Mapped[str]=mapped_column(String(64))
+    budget_m:Mapped[float]=mapped_column(Float)
+    used_m:Mapped[float]=mapped_column(Float)
+    total_m:Mapped[float]=mapped_column(Float)
+    total_risk:Mapped[float]=mapped_column(Float)
+    items:Mapped[list]=mapped_column(JSON,default=list)
+    skipped:Mapped[list]=mapped_column(JSON,default=list)
+    resurvey_ids:Mapped[list]=mapped_column(JSON,default=list)
+    created_by:Mapped[str]=mapped_column(String(40),default='')
 class SurveyRelease(Base):
     __tablename__='survey_releases'
     id:Mapped[int]=mapped_column(primary_key=True)
